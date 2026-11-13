@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08111d">
+<title>Jarvis ActionCam</title>
+<style>
+:root{color-scheme:dark;--bg:#08111d;--panel:#132235;--line:#2b4058;--muted:#9eb0c6;--red:#ef4858;--green:#22b887}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(900px 450px at 50% -10%,#203a56,var(--bg) 65%);color:#eef5ff;font:15px system-ui,-apple-system,sans-serif}
+main{max-width:850px;margin:auto;padding:16px 13px 35px}.head,.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{font-weight:900;letter-spacing:.08em}.muted,.hint{color:var(--muted);font-size:12px;line-height:1.55}
+.pill,.tag{border:1px solid #3a526d;border-radius:999px;padding:6px 10px;font-size:11px}
+.preview{position:relative;margin-top:16px;background:#000;border:1px solid var(--line);border-radius:18px;overflow:hidden;aspect-ratio:16/9;display:grid;place-items:center}
+video{width:100%;height:100%;object-fit:cover}.placeholder{position:absolute;text-align:center;color:#9aabc0;font-size:13px;padding:20px}.placeholder b{display:block;color:white;margin-bottom:5px}
+.topline{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;pointer-events:none}
+.controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+button,select{background:#182a40;color:#fff;border:1px solid var(--line);border-radius:12px;min-height:46px;padding:10px;font:600 13px system-ui}
+button:disabled{opacity:.4}button.primary{background:var(--red);border-color:var(--red)}button.green{background:#126348;border-color:#1d8b67}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.metric,.section{background:linear-gradient(145deg,#16283d,#0e1927);border:1px solid var(--line);border-radius:14px;padding:12px}
+.metric small{font-size:11px;color:var(--muted)}.metric strong{display:block;font-size:18px;margin-top:4px}
+.section{margin-top:10px}.section h2{font-size:14px;margin:0 0 9px}.settings{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.settings label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px}.settings select{width:100%}
+#downloads a{display:block;color:#91ddff;margin-top:8px;overflow-wrap:anywhere}
+#lockscreen{position:fixed;inset:0;z-index:5;display:none;align-items:center;justify-content:center;background:#03080ef5;touch-action:none}
+#lockscreen.show{display:flex}#hold{width:min(78vw,340px);aspect-ratio:1;border:2px solid #59718b;border-radius:50%;background:radial-gradient(circle,#203850,#0a1420);display:flex;flex-direction:column;align-items:center;justify-content:center;user-select:none}
+#hold strong{font-size:20px}#hold span{font-size:12px;color:#b2c3d5;margin-top:9px}#progress{height:5px;width:65%;background:#42576c;margin-top:18px;border-radius:9px;overflow:hidden}#bar{height:100%;width:0;background:var(--green)}
+footer{font-size:11px;color:#8294a9;line-height:1.6;margin-top:15px}
+@media(max-width:520px){.preview{aspect-ratio:4/3}.controls{grid-template-columns:1fr 1fr}.controls button:last-child{grid-column:span 2}.pill{display:none}}
+</style>
+</head>
+<body>
+<main>
+<header class="head"><div><div class="brand">JARVIS <span style="color:#ff5967">ACTIONCAM</span></div><div class="muted">手机运动相机 · Web 原型 v0.1</div></div><span class="pill">BROWSER CAMERA</span></header>
+<div class="preview"><video id="preview" autoplay muted playsinline></video><div class="placeholder" id="placeholder"><b>准备开始拍摄</b>点击「启动相机」并允许摄像头权限</div><div class="topline"><span class="tag" id="status">待机</span><span class="tag" id="camTag">CAM —</span></div></div>
+<div class="controls">
+<button class="green" id="startCam">启动相机</button><button class="primary" id="record" disabled>● 开始录像</button><button id="switch" disabled>切换镜头</button>
+<button id="lock" disabled>锁定触屏</button><button id="gyro">启用运动传感器</button><button id="stopCam" disabled>关闭相机</button>
+</div>
+<div class="metrics">
+<div class="metric"><small>录像时间</small><strong id="timer">00:00</strong></div>
+<div class="metric"><small>陀螺仪采样</small><strong id="samples">0</strong></div>
+<div class="metric"><small>峰值角速度</small><strong id="peak">0.0°/s</strong></div>
+</div>
+<section class="section"><h2>拍摄设置</h2><div class="settings">
+<div><label for="quality">视频画质</label><select id="quality"><option value="1080">1080p 优先</option><option value="720">720p</option><option value="480">480p</option></select></div>
+<div><label for="facing">镜头</label><select id="facing"><option value="environment">后置摄像头</option><option value="user">前置摄像头</option></select></div>
+</div><p class="hint">实际分辨率、帧率和编码格式取决于设备与浏览器。录像前请确认储存空间充足。</p></section>
+<section class="section"><h2>拍摄文件</h2><div id="downloads" class="hint">完成录像后，视频和运动数据 CSV 下载链接会显示在这里。</div></section>
+<section class="section"><h2>版本说明</h2><p class="hint">支持摄像头预览、录像、前后镜头切换、长按解锁和运动数据记录。当前尚未将传感器数据应用于视频帧，因此不是真正的视频防抖，也不会生成 AI 修复视频。浏览器切后台、锁屏或省电模式可能中断录像。</p></section>
+<footer>隐私提示：视频在本机浏览器中处理并由你主动下载，不会自动上传服务器。请在安全环境中拍摄，不要边走边盯着屏幕。</footer>
+</main>
+<div id="lockscreen"><div id="hold"><strong>触屏已锁定</strong><span>长按圆圈 1.5 秒解锁</span><div id="progress"><div id="bar"></div></div></div></div>
+<script>
+const $=id=>document.getElementById(id);let stream=null,recorder=null,chunks=[],startedAt=0,timerId=null,gyroOn=false,samples=[],peak=0,lockTimer=null,wakeLock=null;
+const mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(x=>window.MediaRecorder&&MediaRecorder.isTypeSupported(x));
+function status(t){$('status').textContent=t}
+function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function download(blob,name){const u=URL.createObjectURL(blob),a=document.createElement('a');a.href=u;a.download=name;a.textContent='下载 '+name;$('downloads').appendChild(a)}
+async function startCamera(){
+ if(!navigator.mediaDevices?.getUserMedia){alert('请使用最新版 Chrome，并通过 HTTPS 打开网页。');return}
+ try{
+  if(stream)stopCamera();
+  const h=+$('quality').value,f=$('facing').value;
+  stream=await navigator.mediaDevices.getUserMedia({audio:true,video:{facingMode:{ideal:f},width:{ideal:h===1080?1920:h===720?1280:854},height:{ideal:h},frameRate:{ideal:30,max:60}}});
+  $('preview').srcObject=stream;await $('preview').play();$('placeholder').style.display='none';
+  $('camTag').textContent=f==='environment'?'后置镜头':'前置镜头';
+  ['record','switch','lock','stopCam'].forEach(x=>$(x).disabled=false);$('startCam').disabled=true;status('相机就绪');
+  try{wakeLock=await navigator.wakeLock?.request('screen')}catch(e){}
+ }catch(e){alert('启动失败：'+e.message+'。请检查摄像头和麦克风权限，并确认网页使用 HTTPS。')}
+}
+function stopCamera(){if(recorder?.state==='recording')stopRecording();stream?.getTracks().forEach(t=>t.stop());stream=null;$('preview').srcObject=null;$('placeholder').style.display='block';['record','switch','lock','stopCam'].forEach(x=>$(x).disabled=true);$('startCam').disabled=false;status('待机')}
+async function switchCamera(){if(recorder?.state==='recording'){alert('请先停止录像再切换镜头。');return}$('facing').value=$('facing').value==='environment'?'user':'environment';await startCamera()}
+function startRecording(){
+ if(!stream)return;if(!window.MediaRecorder){alert('浏览器不支持 MediaRecorder');return}
+ chunks=[];samples=[];peak=0;$('samples').textContent='0';$('peak').textContent='0.0°/s';
+ try{recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined)}catch(e){alert('无法启动录像：'+e.message);return}
+ recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
+ recorder.onstop=()=>{
+  const type=recorder.mimeType||'video/webm',blob=new Blob(chunks,{type}),stamp=new Date().toISOString().replace(/[:.]/g,'-'),ext=type.includes('mp4')?'mp4':'webm';
+  download(blob,'JarvisActionCam_'+stamp+'.'+ext);
+  if(samples.length){const csv='elapsed_ms,alpha,beta,gamma,rotation_alpha,rotation_beta,rotation_gamma\\n'+samples.map(x=>x.join(',')).join('\\n');download(new Blob([csv],{type:'text/csv'}),'JarvisActionCam_'+stamp+'_motion.csv')}
+  status('视频已生成');$('record').textContent='● 开始录像';
+ };
+ recorder.start(1000);startedAt=Date.now();timerId=setInterval(()=>$('timer').textContent=fmt(Math.floor((Date.now()-startedAt)/1000)),250);$('record').textContent='■ 停止录像';status('正在录像')
+}
+function stopRecording(){if(recorder?.state==='recording')recorder.stop();clearInterval(timerId);$('timer').textContent='00:00'}
+function motion(e){
+ if(!gyroOn||!recorder||recorder.state!=='recording')return;
+ const r=e.rotationRate||{},a=r.alpha||0,b=r.beta||0,c=r.gamma||0,v=Math.hypot(a,b,c);peak=Math.max(peak,v);
+ samples.push([Date.now()-startedAt,e.alpha??'',e.beta??'',e.gamma??'',a,b,c]);$('samples').textContent=samples.length;$('peak').textContent=peak.toFixed(1)+'°/s'
+}
+async function enableGyro(){
+ try{
+  if(typeof DeviceMotionEvent==='undefined')throw Error('此浏览器没有运动传感器接口');
+  if(typeof DeviceMotionEvent.requestPermission==='function'&&await DeviceMotionEvent.requestPermission()!=='granted')throw Error('未获得运动传感器权限');
+  addEventListener('devicemotion',motion,true);gyroOn=true;$('gyro').textContent='运动传感器已启用';$('gyro').disabled=true;status('传感器就绪')
+ }catch(e){alert(e.message)}
+}
+function lock(){$('lockscreen').classList.add('show')}
+function unlock(){$('lockscreen').classList.remove('show');$('bar').style.width='0';clearInterval(lockTimer)}
+$('hold').addEventListener('pointerdown',e=>{e.preventDefault();const t=Date.now();lockTimer=setInterval(()=>{const p=Math.min(100,(Date.now()-t)/1500*100);$('bar').style.width=p+'%';if(p>=100)unlock()},25)});
+['pointerup','pointercancel','pointerleave'].forEach(x=>$('hold').addEventListener(x,()=>{clearInterval(lockTimer);if($('lockscreen').classList.contains('show'))$('bar').style.width='0'}));
+$('startCam').onclick=startCamera;$('stopCam').onclick=stopCamera;$('switch').onclick=switchCamera;$('record').onclick=()=>recorder?.state==='recording'?stopRecording():startRecording();$('lock').onclick=lock;$('gyro').onclick=enableGyro;
+document.addEventListener('visibilitychange',async()=>{if(document.visibilityState==='visible'&&stream)try{wakeLock=await navigator.wakeLock?.request('screen')}catch(e){}});
+</script>
+</body></html>
